@@ -1,0 +1,59 @@
+
+name: Build StudyStreak APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract project ZIP
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip
+          mkdir extracted
+          unzip -q StudyStreak-expo-project.zip -d extracted
+          cp -a extracted/. .
+          rm -rf extracted
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate Android project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease \
+            -PreactNativeArchitectures=arm64-v8a \
+            --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: StudyStreak-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          
